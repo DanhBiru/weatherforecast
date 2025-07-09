@@ -1,0 +1,37 @@
+:root {
+    --scale-1-color: #9cd84e; 
+    --scale-2-color: #f9cf39; 
+    --scale-3-color: #f89049; 
+    --scale-4-color: #f89049; 
+    --scale-5-color: #9f70b5; 
+    --scale-6-color: #a06a7b;
+}
+
+.legend_note {
+    padding:4px;
+    border-radius:4px;
+}
+
+.legend_note-1 {
+    background-color: var(--scale-1-color);
+}
+
+.legend_note-2 {
+    background-color: var(--scale-2-color);
+}
+
+.legend_note-3 {
+    background-color: var(--scale-3-color);
+}
+
+.legend_note-4 {
+    background-color: var(--scale-4-color);
+}
+
+.legend_note-5 {
+    background-color: var(--scale-5-color);
+}
+
+.legend_note-6 {
+    background-color: var(--scale-6-color);
+}
