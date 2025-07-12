@@ -17,15 +17,12 @@ def load_data():
 df = load_data()
 
 # --- UI
-st.title("Biểu đồ chất lượng không khí theo tỉnh thành")
-st.write("Chọn một tỉnh/thành để xem biểu đồ PM2.5 và AQI trong 6 ngày")
 
-province_list = sorted(df["VARNAME_1"].unique())
-selected_province = st.selectbox("Chọn tỉnh/thành:", province_list)
+# st.title("Biểu đồ chất lượng không khí theo tỉnh thành")
+# st.write("Chọn một tỉnh/thành để xem biểu đồ PM2.5 và AQI trong 6 ngày")
+# st.write(f"biểu đồ PM2.5 và AQI trong 6 ngày tại {selected_province}")
 
-st.write(f"biểu đồ PM2.5 và AQI trong 6 ngày tại {selected_province}")
-
-# some constants
+# some useful constants 
 OPACITY = 0.9
 OUTLINE_WIDTH = 0
 LINE_WIDTH = 3
@@ -37,7 +34,9 @@ SCALE_EN = ["Good", "Moderate", "Unhealthy for Sensitive Groups", "Unhealthy", "
 # SCALE_VI = ["Tốt", "Trung bình", "Không tốt cho nhóm người nhạy cảm", "Không lành mạnh", "Rất không lành mạnh", "Nguy hiểm"]
 SCALE_PALETTE = ["#9cd84e", "#f9cf39", "#f89049", "#f89049", "#9f70b5", "#a06a7b"]
 
-# --- Vẽ biểu đồ
+# --- Vẽ 2 biểu đồ
+province_list = sorted(df["VARNAME_1"].unique())
+selected_province = st.selectbox("Chọn tỉnh/thành:", province_list)
 filtered_df = df[df["VARNAME_1"] == selected_province].sort_values("time")
 
 from_date = min(filtered_df["time"])
@@ -159,22 +158,19 @@ fig2.update_layout(
     height=500
 )
 
-# ---- Nhúng map ----
+# --- Nhúng map ---
 date_list = pd.date_range(start=from_date, end=to_date, freq='D').sort_values(ascending=False)
 selected_date = st.selectbox("Ngày:", date_list, index=0)
 index_list = ["AQI", "PM25"]
 selected_index = st.selectbox("Loại chỉ số:", index_list, index=0)
 
-df_that_date = df[df['time'].dt.date == selected_date.date()]
-
-# with open("DiaPhanCapTinh_geojson.geojson") as f:
-#     geojson_data = json.load(f)
+df_selected_date = df[df['time'].dt.date == selected_date.date()]
 
 with open("VNnew34.json") as f:
     geojson_data = json.load(f)
 
 fig = px.choropleth_mapbox(
-    df_that_date,
+    df_selected_date,
     geojson=geojson_data,
     locations="VARNAME_1",  # Cột mã trong df để map với geojson
     featureidkey="properties.NAME_1",  # phải khớp với key trong geojson
@@ -210,8 +206,28 @@ fig.update_layout(
     )
 )
 
+# --- Pages for embedding
+page = st.query_params.get("page", "main")
+if page == "map":
+    st.set_page_config(layout="wide")
+    st.title("Bản đồ chất lượng không khí")
+    st.plotly_chart(fig, use_container_width=True)
+
+elif page == "chart":
+    st.title("Biểu đồ PM2.5")
+    st.plotly_chart(fig1, use_container_width=True)
+
+else:
+    st.title("📊 Dự báo chất lượng không khí")
+    st.markdown("Chọn nội dung muốn xem:")
+    st.markdown("- [➡️ Xem bản đồ](?page=map)")
+    st.markdown("- [📈 Xem biểu đồ](?page=chart)")
+
 # --- Load UI
 
+# with open("style.css") as f:
+#     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+    
 # with st.container():
 #     st.markdown('<div class="map-container">', unsafe_allow_html=True)
 #     st.plotly_chart(fig, use_container_width=True)
@@ -228,37 +244,30 @@ fig.update_layout(
 
 #     st.markdown('</div>', unsafe_allow_html=True)
 
-col1, col2 = st.columns(2)
-with col1:
-    st.subheader("Charts")
-    st.plotly_chart(fig1, use_container_width=True)
-    st.plotly_chart(fig2, use_container_width=True)
-
-with col2:
-    st.subheader("Map")
-    st.plotly_chart(fig, use_container_width=True)
+# st.plotly_chart(fig1, use_container_width=True)
+# st.plotly_chart(fig2, use_container_width=True)
+# st.plotly_chart(fig, use_container_width=True)
 
 #legend
-with open("style.css") as f:
-    st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
-st.markdown(
-    """
-    <div class="legend" style='font-size:16px'>
-        <span class="legend_note-1">  </span> Good  
-        <span class="legend_note-2">  </span> Moderate  
-        <span class="legend_note-3">  </span> Unhealthy for Sensitive Group  
-        <span class="legend_note-4">  </span> Unhealthy  
-        <span class="legend_note-5">  </span> Very Unhealthy  
-        <span class="legend_note-6">  </span> Hazardous  
-    </div>
-    """,
-    unsafe_allow_html=True
-)
 
-fig1.write_html("pm25_chart.html", include_plotlyjs='cdn')
-fig2.write_html("aqi_chart.html", include_plotlyjs='cdn')
-fig.write_html("map.html", include_plotlyjs='cdn')
+# st.markdown(
+#     """
+#     <div class="legend" style='font-size:16px'>
+#         <span class="legend_note-1">  </span> Good  
+#         <span class="legend_note-2">  </span> Moderate  
+#         <span class="legend_note-3">  </span> Unhealthy for Sensitive Group  
+#         <span class="legend_note-4">  </span> Unhealthy  
+#         <span class="legend_note-5">  </span> Very Unhealthy  
+#         <span class="legend_note-6">  </span> Hazardous  
+#     </div>
+#     """,
+#     unsafe_allow_html=True
+# )
+
+# fig1.write_html("pm25_chart.html", include_plotlyjs='cdn')
+# fig2.write_html("aqi_chart.html", include_plotlyjs='cdn')
+# fig.write_html("map.html", include_plotlyjs='cdn')
 
 
 # st.plotly_chart(fig, use_container_width=True)
