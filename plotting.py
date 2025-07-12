@@ -46,7 +46,7 @@ to_date = max(filtered_df["time"]) #can be overwrite later if needed
 fig1 = go.Figure()
 fig2 = go.Figure()
 
-# Vẽ biểu đồ PM25
+# -- Biểu đồ PM2.5
 fig1.add_trace(go.Scatter(
     x=filtered_df["time"], 
     y=filtered_df["PM25"],
@@ -104,12 +104,12 @@ fig1.update_layout(
     height=500
 )
 
+# -- Biểu đồ AQI
 fig2.add_trace(go.Scatter(
     x=filtered_df["time"], y=filtered_df["AQI"],
     mode="lines+markers", name="AQI", line=dict(width=LINE_WIDTH)
 ))
 
-# Vẽ biểu đồ AQI
 aqi_min = filtered_df["AQI"].min()
 aqi_max = filtered_df["AQI"].max()
 
@@ -159,16 +159,84 @@ fig2.update_layout(
     height=500
 )
 
-col1, col2 = st.columns(2)
+# ---- Nhúng map ----
+date_list = pd.date_range(start=from_date, end=to_date, freq='D').sort_values(ascending=False)
+selected_date = st.selectbox("Ngày:", date_list, index=0)
+index_list = ["AQI", "PM25"]
+selected_index = st.selectbox("Loại chỉ số:", index_list, index=0)
 
-#plot
+df_that_date = df[df['time'].dt.date == selected_date.date()]
+
+# with open("DiaPhanCapTinh_geojson.geojson") as f:
+#     geojson_data = json.load(f)
+
+with open("VNnew34.json") as f:
+    geojson_data = json.load(f)
+
+fig = px.choropleth_mapbox(
+    df_that_date,
+    geojson=geojson_data,
+    locations="VARNAME_1",  # Cột mã trong df để map với geojson
+    featureidkey="properties.NAME_1",  # phải khớp với key trong geojson
+    color=selected_index,       # Hoặc "AQI"
+    color_continuous_scale="YlOrRd",
+    range_color=(0, 150),
+    mapbox_style="carto-positron",
+    zoom=4.5,
+    center={"lat": 16.5, "lon": 106},
+    opacity=0.7,
+)
+
+# df_set = set(df["VARNAME_1"])
+# # geo_set = set(f["properties"]["TinhThanh"] for f in geojson_data["features"])
+# geo_set = set(f["properties"]["NAME_1"] for f in geojson_data["features"])
+# print("🟢 Match:", df_set & geo_set)
+# print("🔴 Không match:", geo_set - df_set)
+# print("🔴 Không match:", df_set - geo_set)
+
+fig.update_layout(
+    coloraxis_colorbar=dict(
+        title="PM2.5",
+        thickness=10,        # thu nhỏ bề ngang
+        len=0.5,             # thu nhỏ chiều cao
+        x=0.95,              # dịch sang phải
+        y=0.5,               # canh giữa theo chiều dọc
+        xanchor='left'
+    ),
+    margin={"r": 10, "t": 10, "l": 10, "b": 10},
+    geo=dict(
+        fitbounds="locations",
+        visible=False
+    )
+)
+
+# --- Load UI
+
+# with st.container():
+#     st.markdown('<div class="map-container">', unsafe_allow_html=True)
+#     st.plotly_chart(fig, use_container_width=True)
+#     st.markdown('</div>', unsafe_allow_html=True)
+
+# with st.container():
+#     st.markdown('<div class="overlay-box">', unsafe_allow_html=True)
+
+#     selected_province = st.selectbox("Chọn tỉnh thành", sorted(df["VARNAME_1"].unique()))
+#     df_filtered = df[df["VARNAME_1"] == selected_province]
+
+#     fig_line = px.line(df_filtered, x="time", y=["PM25", "AQI"], markers=True)
+#     st.plotly_chart(fig_line, use_container_width=True)
+
+#     st.markdown('</div>', unsafe_allow_html=True)
+
+col1, col2 = st.columns(2)
 with col1:
-    st.subheader("PM2.5")
+    st.subheader("Charts")
     st.plotly_chart(fig1, use_container_width=True)
+    st.plotly_chart(fig2, use_container_width=True)
 
 with col2:
-    st.subheader("AQI")
-    st.plotly_chart(fig2, use_container_width=True)
+    st.subheader("Map")
+    st.plotly_chart(fig, use_container_width=True)
 
 #legend
 with open("style.css") as f:
@@ -188,36 +256,9 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# ---- Nhúng map ----
-date_chosen = "2025-07-06"
-index_chosen = "AQI"
+fig1.write_html("pm25_chart.html", include_plotlyjs='cdn')
+fig2.write_html("aqi_chart.html", include_plotlyjs='cdn')
+fig.write_html("map.html", include_plotlyjs='cdn')
 
-df['time'] = pd.to_datetime(df['time'])
-that_date = pd.to_datetime(date_chosen)
-df_that_date = df[df['time'].dt.date == that_date.date()]
 
-with open("DiaPhanCapTinh_geojson.geojson") as f:
-    geojson_data = json.load(f)
-
-fig = px.choropleth_mapbox(
-    df_that_date,
-    geojson=geojson_data,
-    locations="VARNAME_1",  # Cột mã trong df để map với geojson
-    featureidkey="properties.TinhThanh",  # phải khớp với key trong geojson
-    color=index_chosen,       # Hoặc "AQI"
-    color_continuous_scale="YlOrRd",
-    range_color=(0, 150),
-    mapbox_style="carto-positron",
-    zoom=4.5,
-    center={"lat": 16.5, "lon": 106},
-    opacity=0.7,
-)
-
-df_set = set(df["VARNAME_1"])
-geo_set = set(f["properties"]["TinhThanh"] for f in geojson_data["features"])
-print("🟢 Match:", df_set & geo_set)
-print("🔴 Không match:", df_set - geo_set)
-
-fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
-
-st.plotly_chart(fig, use_container_width=True)
+# st.plotly_chart(fig, use_container_width=True)
