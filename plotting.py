@@ -6,23 +6,18 @@ import json
 
 # --- Chỉnh chế độ hiển thị ---
 st.set_page_config(layout="wide")
+
 # --- Đọc dữ liệu từ file Excel ---
 @st.cache_data
 
 def load_data():
     df = pd.read_excel("forecast (1).xlsx", engine="openpyxl")
-    df["time"] = pd.to_datetime(df["time"])
+    df["time"] = df["time"].dt.date
     return df
 
 df = load_data()
 
-# --- UI
-
-# st.title("Biểu đồ chất lượng không khí theo tỉnh thành")
-# st.write("Chọn một tỉnh/thành để xem biểu đồ PM2.5 và AQI trong 6 ngày")
-# st.write(f"biểu đồ PM2.5 và AQI trong 6 ngày tại {selected_province}")
-
-# some useful constants 
+# some useful constants and variables
 OPACITY = 0.9
 OUTLINE_WIDTH = 0
 LINE_WIDTH = 3
@@ -34,13 +29,72 @@ SCALE_EN = ["Good", "Moderate", "Unhealthy for Sensitive Groups", "Unhealthy", "
 # SCALE_VI = ["Tốt", "Trung bình", "Không tốt cho nhóm người nhạy cảm", "Không lành mạnh", "Rất không lành mạnh", "Nguy hiểm"]
 SCALE_PALETTE = ["#9cd84e", "#f9cf39", "#f89049", "#f89049", "#9f70b5", "#a06a7b"]
 
-# --- Vẽ 2 biểu đồ
-province_list = sorted(df["VARNAME_1"].unique())
-selected_province = st.selectbox("Chọn tỉnh/thành:", province_list)
-filtered_df = df[df["VARNAME_1"] == selected_province].sort_values("time")
+from_date = min(df["time"])
+to_date = max(df["time"]) 
 
-from_date = min(filtered_df["time"])
-to_date = max(filtered_df["time"]) #can be overwrite later if needed
+# --- CSS ---
+with open("style.css") as f:
+    st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
+# --- Nhúng map ---
+date_list = pd.date_range(start=from_date, end=to_date, freq='D').sort_values(ascending=False).date
+index_list = ["AQI", "PM25"]
+
+st.sidebar.markdown("<p>Bản đồ</p>", unsafe_allow_html=True)
+selected_date = st.sidebar.selectbox("-- Ngày --", date_list, index=0)
+selected_index = st.sidebar.selectbox("-- Loại chỉ số --", index_list, index=0)
+index_max = 1
+
+if selected_index == "AQI":
+    index_max = AQI_SCALE[-1]
+    color_continous_scale = [(AQI_SCALE[i]/index_max, SCALE_PALETTE[i]) for i in range(len(SCALE_PALETTE))]
+else:
+    index_max = PM25_SCALE[-1]
+    color_continous_scale = [(PM25_SCALE[i]/index_max, SCALE_PALETTE[i]) for i in range(len(SCALE_PALETTE))]
+color_continous_scale.insert(0, (0.0, SCALE_PALETTE[0]))
+
+df_selected_date = df[df['time'] == selected_date]
+
+with open("VNnew34.json") as f:
+    geojson_data = json.load(f)
+
+fig = px.choropleth_mapbox(
+    df_selected_date,
+    geojson=geojson_data,
+    locations="VARNAME_1",  # Cột mã trong df để map với geojson
+    featureidkey="properties.NAME_1",  # phải khớp với key trong geojson
+    color=selected_index,    
+    color_continuous_scale=color_continous_scale,
+    range_color=(0, index_max),
+    mapbox_style="carto-positron",
+    zoom=4.5,
+    center={"lat": 16.5, "lon": 106},
+    opacity=0.7,
+)
+
+fig.update_layout(
+    coloraxis_colorbar=dict(
+        title=selected_index,
+        thickness=10,        # thu nhỏ bề ngang
+        len=0.5,             # thu nhỏ chiều cao
+        x=0.95,              # dịch sang phải
+        y=0.5,               # canh giữa theo chiều dọc
+        xanchor='left'
+    ),
+    margin={"r": 0, "t": 0, "l": 0, "b": 0},
+    mapbox_zoom=5.4, 
+    height=1000,
+    geo=dict(
+        fitbounds="locations",
+        visible=False
+    )
+)
+
+# --- Vẽ 2 biểu đồ
+st.sidebar.markdown("<p>Biểu đồ</p>", unsafe_allow_html=True)
+province_list = sorted(df["VARNAME_1"].unique())
+selected_province = st.sidebar.selectbox("-- Chọn tỉnh/thành --", province_list)
+filtered_df = df[df["VARNAME_1"] == selected_province].sort_values("time")
 
 fig1 = go.Figure()
 fig2 = go.Figure()
@@ -158,54 +212,6 @@ fig2.update_layout(
     height=500
 )
 
-# --- Nhúng map ---
-date_list = pd.date_range(start=from_date, end=to_date, freq='D').sort_values(ascending=False)
-selected_date = st.selectbox("Ngày:", date_list, index=0)
-index_list = ["AQI", "PM25"]
-selected_index = st.selectbox("Loại chỉ số:", index_list, index=0)
-
-df_selected_date = df[df['time'].dt.date == selected_date.date()]
-
-with open("VNnew34.json") as f:
-    geojson_data = json.load(f)
-
-fig = px.choropleth_mapbox(
-    df_selected_date,
-    geojson=geojson_data,
-    locations="VARNAME_1",  # Cột mã trong df để map với geojson
-    featureidkey="properties.NAME_1",  # phải khớp với key trong geojson
-    color=selected_index,       # Hoặc "AQI"
-    color_continuous_scale="YlOrRd",
-    range_color=(0, 150),
-    mapbox_style="carto-positron",
-    zoom=4.5,
-    center={"lat": 16.5, "lon": 106},
-    opacity=0.7,
-)
-
-# df_set = set(df["VARNAME_1"])
-# # geo_set = set(f["properties"]["TinhThanh"] for f in geojson_data["features"])
-# geo_set = set(f["properties"]["NAME_1"] for f in geojson_data["features"])
-# print("🟢 Match:", df_set & geo_set)
-# print("🔴 Không match:", geo_set - df_set)
-# print("🔴 Không match:", df_set - geo_set)
-
-fig.update_layout(
-    coloraxis_colorbar=dict(
-        title="PM2.5",
-        thickness=10,        # thu nhỏ bề ngang
-        len=0.5,             # thu nhỏ chiều cao
-        x=0.95,              # dịch sang phải
-        y=0.5,               # canh giữa theo chiều dọc
-        xanchor='left'
-    ),
-    margin={"r": 10, "t": 10, "l": 10, "b": 10},
-    geo=dict(
-        fitbounds="locations",
-        visible=False
-    )
-)
-
 # --- Pages for embedding
 page = st.query_params.get("page", "main")
 if page == "map":
@@ -213,20 +219,26 @@ if page == "map":
     st.title("Bản đồ chất lượng không khí")
     st.plotly_chart(fig, use_container_width=True)
 
-elif page == "chart":
-    st.title("Biểu đồ PM2.5")
-    st.plotly_chart(fig1, use_container_width=True)
+# elif page == "chart":
+#     st.title("Biểu đồ PM2.5")
+#     st.plotly_chart(fig1, use_container_width=True)
 
 else:
-    st.title("📊 Dự báo chất lượng không khí")
-    st.markdown("Chọn nội dung muốn xem:")
-    st.markdown("- [➡️ Xem bản đồ](?page=map)")
-    st.markdown("- [📈 Xem biểu đồ](?page=chart)")
+    st.sidebar.markdown("Embed: \n" \
+    "- [➡️ Bản đồ](?page=map) \n" \
+    "- [📈 Biểu đồ](?page=chart) \n")
+
+    col1, col2 = st.columns([1,1])
+    with col1:
+        st.plotly_chart(fig1, use_container_width=True)
+        st.plotly_chart(fig2, use_container_width=True)
+    with col2:
+        st.plotly_chart(fig, use_container_width=True)
+    
 
 # --- Load UI
 
-# with open("style.css") as f:
-#     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
     
 # with st.container():
 #     st.markdown('<div class="map-container">', unsafe_allow_html=True)
