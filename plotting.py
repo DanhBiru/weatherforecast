@@ -219,9 +219,9 @@ if page == "map":
     st.title("Bản đồ chất lượng không khí")
     st.plotly_chart(fig, use_container_width=True)
 
-# elif page == "chart":
-#     st.title("Biểu đồ PM2.5")
-#     st.plotly_chart(fig1, use_container_width=True)
+elif page == "chart":
+    st.plotly_chart(fig1, use_container_width=True)
+    st.plotly_chart(fig2, use_container_width=True)
 
 else:
     st.sidebar.markdown("Embed: \n" \
@@ -235,51 +235,3 @@ else:
     with col2:
         st.plotly_chart(fig, use_container_width=True)
     
-
-# --- Load UI
-
-
-    
-# with st.container():
-#     st.markdown('<div class="map-container">', unsafe_allow_html=True)
-#     st.plotly_chart(fig, use_container_width=True)
-#     st.markdown('</div>', unsafe_allow_html=True)
-
-# with st.container():
-#     st.markdown('<div class="overlay-box">', unsafe_allow_html=True)
-
-#     selected_province = st.selectbox("Chọn tỉnh thành", sorted(df["VARNAME_1"].unique()))
-#     df_filtered = df[df["VARNAME_1"] == selected_province]
-
-#     fig_line = px.line(df_filtered, x="time", y=["PM25", "AQI"], markers=True)
-#     st.plotly_chart(fig_line, use_container_width=True)
-
-#     st.markdown('</div>', unsafe_allow_html=True)
-
-# st.plotly_chart(fig1, use_container_width=True)
-# st.plotly_chart(fig2, use_container_width=True)
-# st.plotly_chart(fig, use_container_width=True)
-
-#legend
-
-
-# st.markdown(
-#     """
-#     <div class="legend" style='font-size:16px'>
-#         <span class="legend_note-1">  </span> Good  
-#         <span class="legend_note-2">  </span> Moderate  
-#         <span class="legend_note-3">  </span> Unhealthy for Sensitive Group  
-#         <span class="legend_note-4">  </span> Unhealthy  
-#         <span class="legend_note-5">  </span> Very Unhealthy  
-#         <span class="legend_note-6">  </span> Hazardous  
-#     </div>
-#     """,
-#     unsafe_allow_html=True
-# )
-
-# fig1.write_html("pm25_chart.html", include_plotlyjs='cdn')
-# fig2.write_html("aqi_chart.html", include_plotlyjs='cdn')
-# fig.write_html("map.html", include_plotlyjs='cdn')
-
-
-# st.plotly_chart(fig, use_container_width=True)
